@@ -1,0 +1,13 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+
+# PyCharm settings
+.idea/
+
+# Virtual environment (if you use one)
+venv/
+env/
+
+# Sensitive configuration (DO NOT UPLOAD PASSWORDS)
+config/settings.json
