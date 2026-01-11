@@ -43,6 +43,7 @@ class LibraryApp:
         db = DatabaseConnection()
         if not db.connect():
             print("CRITICAL ERROR: Cannot connect to database. Check config/settings.json.")
+            input("Press Enter to exit...") # <--- TOTO JSME PŘIDALI
             return
 
         while True:
@@ -177,6 +178,17 @@ class LibraryApp:
             print("Error: ID must be a number.")
 
 
+import traceback
+
 if __name__ == "__main__":
-    app = LibraryApp()
-    app.run()
+    try:
+        app = LibraryApp()
+        app.run()
+    except Exception:
+
+        print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("FATAL ERROR - PROGRAM SPADL")
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
+        traceback.print_exc()
+        print("\n")
+        input("Stiskni ENTER pro ukončení...")
