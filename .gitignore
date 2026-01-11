@@ -6,8 +6,8 @@ __pycache__/
 .idea/
 
 # Virtual environment (if you use one)
-venv/
-env/
+#venv/
+#env/
 
 # Sensitive configuration (DO NOT UPLOAD PASSWORDS)
 # config/settings.json
