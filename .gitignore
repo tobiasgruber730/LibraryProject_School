@@ -10,4 +10,4 @@ venv/
 env/
 
 # Sensitive configuration (DO NOT UPLOAD PASSWORDS)
-config/settings.json
+# config/settings.json
