@@ -4,18 +4,25 @@ from db_connection import DatabaseConnection
 
 class BookRepository:
     """
-    Implements the Repository Pattern for Book entity.
-    Handles all SQL operations related to books.
-    Requirement D1: Repository Pattern.
+    Implements the Repository Pattern for the Book entity.
+
+    This class abstracts all direct SQL operations related to books,
+    providing a clean API for the rest of the application.
+    Requirement D1: Repository Pattern implementation.
     """
 
     def __init__(self):
+        """
+        Initializes the repository with a database connection instance.
+        """
         self.db = DatabaseConnection()
 
     def get_all_books(self):
         """
-        Fetches all books from the database.
-        Returns a list of dictionaries.
+        Retrieves all books from the database.
+
+        Returns:
+            list[dict]: A list of dictionaries, where each dictionary represents a book.
         """
         conn = self.db.connect()
         if not conn:
@@ -35,7 +42,11 @@ class BookRepository:
 
     def get_all_publishers(self):
         """
-        Fetches all publishers to help user choose ID during book creation.
+        Retrieves all publishers from the database.
+        This is a helper method to assist users in selecting a Publisher ID when creating a book.
+
+        Returns:
+            list[dict]: A list of publishers.
         """
         conn = self.db.connect()
         if not conn:
@@ -53,7 +64,17 @@ class BookRepository:
 
     def add_book(self, title, isbn, price, publisher_id):
         """
-        Inserts a new book into the database.
+        Inserts a new book record into the database.
+
+        Args:
+            title (str): Title of the book.
+            isbn (str): International Standard Book Number.
+            price (float): Price of the book.
+            publisher_id (int): Foreign key referencing the publisher.
+
+        Returns:
+            int: The ID of the newly created book.
+            None: If the operation fails.
         """
         conn = self.db.connect()
         if not conn:
@@ -76,29 +97,15 @@ class BookRepository:
             cursor.close()
             self.db.close()
 
-    def find_book_by_isbn(self, isbn):
-        """
-        Finds a book by its ISBN.
-        """
-        conn = self.db.connect()
-        if not conn:
-            return None
-
-        cursor = conn.cursor(dictionary=True)
-        try:
-            query = "SELECT * FROM books WHERE isbn = %s"
-            cursor.execute(query, (isbn,))
-            return cursor.fetchone()
-        except mysql.connector.Error as err:
-            print(f"Error finding book: {err}")
-            return None
-        finally:
-            cursor.close()
-            self.db.close()
-
     def delete_book(self, book_id):
         """
-        Deletes a book by ID.
+        Deletes a book from the database by its ID.
+
+        Args:
+            book_id (int): The ID of the book to delete.
+
+        Returns:
+            bool: True if deletion was successful, False otherwise.
         """
         conn = self.db.connect()
         if not conn:

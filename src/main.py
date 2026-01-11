@@ -1,5 +1,6 @@
 import sys
 import os
+import traceback
 
 # Ensure we can import modules from the same directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -14,16 +15,22 @@ from reporting_service import ReportingService
 class LibraryApp:
     """
     Main Application Entry Point.
-    Provides CLI (Command Line Interface) for the user.
+    Provides a Command Line Interface (CLI) for the user to interact with the system.
     """
 
     def __init__(self):
+        """
+        Initializes the application by instantiating all necessary services and repositories.
+        """
         self.book_repo = BookRepository()
         self.loan_service = LoanService()
         self.import_service = ImportService()
         self.report_service = ReportingService()
 
     def print_menu(self):
+        """
+        Displays the main menu options to the console.
+        """
         print("\n" + "=" * 30)
         print("   LIBRARY MANAGER v1.1")
         print("=" * 30)
@@ -39,11 +46,15 @@ class LibraryApp:
         print("-" * 30)
 
     def run(self):
+        """
+        Starts the main application loop.
+        It handles database connection verification and user input processing.
+        """
         # Initial DB Check
         db = DatabaseConnection()
         if not db.connect():
             print("CRITICAL ERROR: Cannot connect to database. Check config/settings.json.")
-            input("Press Enter to exit...") # <--- TOTO JSME PŘIDALI
+            input("Press Enter to exit...")
             return
 
         while True:
@@ -75,13 +86,17 @@ class LibraryApp:
             except Exception as e:
                 print(f"Unexpected Application Error: {e}")
 
-    # --- UI METHODS ---
+    # --- UI METHODS (User Interaction Layer) ---
 
     def show_books(self):
+        """
+        Displays all books formatted as a table.
+        It also checks dynamic availability based on active loans.
+        """
         print("\n--- Book List ---")
         books = self.book_repo.get_all_books()
 
-        # Get list of currently borrowed book IDs using the NEW safer method
+        # Get list of currently borrowed book IDs
         borrowed_book_ids = self.loan_service.get_borrowed_book_ids()
 
         if not books:
@@ -101,9 +116,11 @@ class LibraryApp:
             print(f"{b['book_id']:<4} | {b['title']:<30} | {b['price']:<10.2f} | {status}")
 
     def add_book_ui(self):
+        """
+        UI for adding a new book. Displays publishers to help user selection.
+        """
         print("\n--- Add New Book ---")
 
-        # Show publishers first so user knows the ID
         print("Available Publishers:")
         publishers = self.book_repo.get_all_publishers()
         for p in publishers:
@@ -125,6 +142,9 @@ class LibraryApp:
             print("Error: Invalid input (price/ID must be numbers).")
 
     def borrow_book_ui(self):
+        """
+        UI for borrowing a book. Collects IDs and calls the service.
+        """
         print("\n--- Borrow Book ---")
         try:
             member_id = int(input("Member ID (e.g., 1): "))
@@ -137,6 +157,9 @@ class LibraryApp:
             print("Error: IDs must be numbers.")
 
     def return_book_ui(self):
+        """
+        UI for returning a book.
+        """
         print("\n--- Return Book ---")
         try:
             book_id = int(input("Enter Book ID to return: "))
@@ -146,6 +169,9 @@ class LibraryApp:
             print("Error: ID must be a number.")
 
     def show_loans(self):
+        """
+        UI to display currently active loans.
+        """
         print("\n--- Active Loans ---")
         loans = self.loan_service.get_active_loans()
         if not loans:
@@ -154,15 +180,24 @@ class LibraryApp:
             print(f"Loan [{l['loan_id']}] | {l['full_name']} has '{l['title']}' (since {l['loan_date']})")
 
     def import_csv_ui(self):
+        """
+        UI for triggering CSV import.
+        """
         filename = input("Enter filename in /data folder (default: import_books.csv): ")
         if not filename: filename = "import_books.csv"
         print(f"Importing from {filename}...")
         print(self.import_service.import_books_from_csv(filename))
 
     def show_report(self):
+        """
+        UI for displaying statistics.
+        """
         print(self.report_service.generate_top_borrowers_report())
 
     def delete_book_ui(self):
+        """
+        UI for deleting a book.
+        """
         print("\n--- Delete Book ---")
         try:
             book_id = int(input("Enter Book ID to delete: "))
@@ -178,17 +213,16 @@ class LibraryApp:
             print("Error: ID must be a number.")
 
 
-import traceback
-
 if __name__ == "__main__":
+    # Wrap main execution in a global try-except block to prevent immediate closure
+    # of the console window in case of fatal errors during EXE execution.
     try:
         app = LibraryApp()
         app.run()
     except Exception:
-
         print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print("FATAL ERROR - PROGRAM SPADL")
+        print("FATAL ERROR - PROGRAM CRASHED")
         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
         traceback.print_exc()
         print("\n")
-        input("Stiskni ENTER pro ukončení...")
+        input("Press ENTER to exit...")

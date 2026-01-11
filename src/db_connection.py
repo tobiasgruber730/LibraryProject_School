@@ -6,12 +6,17 @@ import sys
 
 class DatabaseConnection:
     """
-    Singleton class to handle database connection.
-    Reads configuration from config/settings.json.
+    Singleton class responsible for managing the database connection.
+    It reads configuration from 'config/settings.json' and ensures only one
+    active connection configuration is loaded.
     """
     _instance = None
 
     def __new__(cls):
+        """
+        Ensures that only one instance of DatabaseConnection exists (Singleton Pattern).
+        If an instance already exists, it returns the existing one.
+        """
         if cls._instance is None:
             cls._instance = super(DatabaseConnection, cls).__new__(cls)
             cls._instance.connection = None
@@ -19,12 +24,21 @@ class DatabaseConnection:
         return cls._instance
 
     def _load_config(self):
-        """Loads database settings from JSON file. Works for both Script and EXE."""
-        # Pokud běžíme jako EXE (frozen), cesta je vedle spouštěcího souboru
+        """
+        Loads database connection settings from the JSON configuration file.
+
+        It handles path resolution for two scenarios:
+        1. Running as a script (development environment).
+        2. Running as a compiled EXE file (production/frozen environment).
+
+        Returns:
+            dict: Database configuration settings (host, user, password, database).
+            None: If the configuration file is not found.
+        """
+        # Determine the base path depending on whether the app is frozen (EXE) or script
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
         else:
-            # Pokud běžíme v PyCharmu
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
         config_path = os.path.join(base_dir, 'config', 'settings.json')
@@ -34,20 +48,25 @@ class DatabaseConnection:
                 data = json.load(file)
                 return data['database']
         except FileNotFoundError:
-            # Tady přidáme input, aby se okno hned nezavřelo a viděl jsi chybu
             print(f"CRITICAL ERROR: Config file not found at {config_path}")
-            print("Make sure 'config' folder is next to the .exe file.")
+            print("Make sure 'config' folder is next to the executable.")
             if getattr(sys, 'frozen', False):
                 input("Press Enter to exit...")
             return None
 
     def connect(self):
-        """Establishes connection to the database."""
+        """
+        Establishes a connection to the MySQL database using the loaded configuration.
+
+        Returns:
+            mysql.connector.connection.MySQLConnection: The active database connection object.
+            None: If the connection fails or configuration is missing.
+        """
         if self.config is None:
             return None
 
         try:
-
+            # 'use_pure=True' is required for compatibility with PyInstaller (EXE builds)
             self.connection = mysql.connector.connect(
                 host=self.config['host'],
                 user=self.config['user'],
@@ -57,10 +76,12 @@ class DatabaseConnection:
             )
             return self.connection
         except mysql.connector.Error as err:
-            print(f"Error: {err}")
+            print(f"Database Connection Error: {err}")
             return None
 
     def close(self):
-        """Closes the connection."""
+        """
+        Closes the active database connection if it exists and is open.
+        """
         if self.connection and self.connection.is_connected():
             self.connection.close()

@@ -4,8 +4,9 @@ from db_connection import DatabaseConnection
 
 class ReportingService:
     """
-    Generates reports based on aggregated data.
-    Requirement: Aggregated report from at least 3 tables.
+    Service responsible for generating statistical reports.
+
+    Fulfills the requirement: Aggregated report from at least 3 tables.
     """
 
     def __init__(self):
@@ -13,8 +14,15 @@ class ReportingService:
 
     def generate_top_borrowers_report(self):
         """
-        Returns a list of members with count of borrowed books and total value.
-        Joins: Members + Loans + Books.
+        Generates a report of members, their total loans, and total value of borrowed books.
+
+        SQL Logic:
+        - JOINS 3 tables: members, loans, books.
+        - Uses Aggregation functions: COUNT() and SUM().
+        - Groups results by member.
+
+        Returns:
+            str: Formatted string table suitable for console output.
         """
         conn = self.db.connect()
         if not conn:
@@ -22,7 +30,6 @@ class ReportingService:
 
         cursor = conn.cursor(dictionary=True)
         try:
-            # SQL Query joining 3 tables with aggregation (COUNT, SUM)
             query = """
                 SELECT 
                     m.full_name, 
@@ -38,7 +45,7 @@ class ReportingService:
             cursor.execute(query)
             results = cursor.fetchall()
 
-            # Format the output as a string report
+            # Formatting the report header
             report = "\n=== LIBRARY BORROWING REPORT ===\n"
             report += f"{'Member Name':<25} | {'Loans':<5} | {'Total Value':<10}\n"
             report += "-" * 50 + "\n"
@@ -56,9 +63,3 @@ class ReportingService:
         finally:
             cursor.close()
             self.db.close()
-
-
-# --- TEST AREA ---
-if __name__ == "__main__":
-    svc = ReportingService()
-    print(svc.generate_top_borrowers_report())

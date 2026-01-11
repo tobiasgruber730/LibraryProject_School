@@ -7,8 +7,9 @@ from db_connection import DatabaseConnection
 
 class ImportService:
     """
-    Handles data import from external files (CSV).
-    Requirement: Import data into min. 2 tables from CSV/XML/JSON.
+    Service responsible for importing data from external files (CSV).
+
+    Fulfills the requirement: Import data into at least 2 tables from CSV/XML/JSON.
     """
 
     def __init__(self):
@@ -17,8 +18,17 @@ class ImportService:
     def import_books_from_csv(self, filename):
         """
         Reads a CSV file and inserts data into 'publishers' and 'books' tables.
+
+        The method handles path resolution for both development (script) and
+        production (EXE) environments.
+
+        Args:
+            filename (str): Name of the CSV file located in the 'data' folder.
+
+        Returns:
+            str: A report summary containing success count and error details.
         """
-        # Fix cesty pro EXE i PyCharm
+        # Resolve path to the data folder
         if getattr(sys, 'frozen', False):
             base_dir = os.path.dirname(sys.executable)
         else:
@@ -43,14 +53,17 @@ class ImportService:
 
                 for row in reader:
                     try:
+                        # Extract data from CSV row
                         pub_name = row['publisher_name']
                         title = row['book_title']
                         isbn = row['isbn']
                         price = float(row['price'])
 
+                        # 1. Insert into Publishers table
                         cursor.execute("INSERT INTO publishers (name) VALUES (%s)", (pub_name,))
                         new_publisher_id = cursor.lastrowid
 
+                        # 2. Insert into Books table (linked to the new publisher)
                         cursor.execute(
                             "INSERT INTO books (title, isbn, price, publisher_id) VALUES (%s, %s, %s, %s)",
                             (title, isbn, price, new_publisher_id)
@@ -66,6 +79,7 @@ class ImportService:
                     except ValueError:
                         errors.append(f"Invalid data format in row: {row}")
 
+            # Generate final report
             result_msg = f"\n--- Import Finished ---\nSuccess: {success_count}\nErrors: {len(errors)}"
             if errors:
                 result_msg += "\nError Details:\n" + "\n".join(errors)
