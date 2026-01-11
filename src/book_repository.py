@@ -10,13 +10,12 @@ class BookRepository:
     """
 
     def __init__(self):
-        # We get the singleton instance of database connection
         self.db = DatabaseConnection()
 
     def get_all_books(self):
         """
         Fetches all books from the database.
-        Returns a list of dictionaries (one dict per book).
+        Returns a list of dictionaries.
         """
         conn = self.db.connect()
         if not conn:
@@ -24,24 +23,37 @@ class BookRepository:
 
         cursor = conn.cursor(dictionary=True)
         try:
-            # Simple SELECT query
             query = "SELECT * FROM books"
             cursor.execute(query)
-            books = cursor.fetchall()
-            return books
+            return cursor.fetchall()
         except mysql.connector.Error as err:
             print(f"Error fetching books: {err}")
             return []
         finally:
             cursor.close()
-            # We do NOT close the connection here if we want to reuse it,
-            # but for simple scripts, it's safer to close or rely on context managers.
+            self.db.close()
+
+    def get_all_publishers(self):
+        """
+        Fetches all publishers to help user choose ID during book creation.
+        """
+        conn = self.db.connect()
+        if not conn:
+            return []
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT * FROM publishers")
+            return cursor.fetchall()
+        except mysql.connector.Error as err:
+            print(f"Error fetching publishers: {err}")
+            return []
+        finally:
+            cursor.close()
             self.db.close()
 
     def add_book(self, title, isbn, price, publisher_id):
         """
         Inserts a new book into the database.
-        Returns the ID of the new book or None if failed.
         """
         conn = self.db.connect()
         if not conn:
@@ -52,7 +64,7 @@ class BookRepository:
             query = "INSERT INTO books (title, isbn, price, publisher_id) VALUES (%s, %s, %s, %s)"
             values = (title, isbn, price, publisher_id)
             cursor.execute(query, values)
-            conn.commit()  # Important: Save changes to DB
+            conn.commit()
 
             new_id = cursor.lastrowid
             print(f"Success: Book '{title}' added with ID {new_id}.")
@@ -76,8 +88,7 @@ class BookRepository:
         try:
             query = "SELECT * FROM books WHERE isbn = %s"
             cursor.execute(query, (isbn,))
-            book = cursor.fetchone()
-            return book
+            return cursor.fetchone()
         except mysql.connector.Error as err:
             print(f"Error finding book: {err}")
             return None
@@ -106,19 +117,3 @@ class BookRepository:
         finally:
             cursor.close()
             self.db.close()
-
-
-# --- TEST AREA (will be removed later or moved to tests) ---
-if __name__ == "__main__":
-    repo = BookRepository()
-
-    print("--- TESTING REPOSITORY ---")
-
-    # 1. Add a new book
-    repo.add_book("Harry Potter", "999-888-777", 450.00, 1)
-
-    # 2. List all books
-    all_books = repo.get_all_books()
-    print(f"Total books in DB: {len(all_books)}")
-    for b in all_books:
-        print(f" - {b['title']} ({b['isbn']})")

@@ -24,21 +24,27 @@ class LibraryApp:
         self.report_service = ReportingService()
 
     def print_menu(self):
-        print("\n" + "="*30)
-        print("   LIBRARY MANAGER v1.0")
-        print("="*30)
-        print("1. List All Books")
+        print("\n" + "=" * 30)
+        print("   LIBRARY MANAGER v1.1")
+        print("=" * 30)
+        print("1. List All Books (with Availability)")
         print("2. Add New Book")
         print("3. Borrow a Book (Transaction)")
         print("4. Show Active Loans")
         print("5. Import Books from CSV")
         print("6. Generate Statistics Report")
-        print("7. Delete a Book")  # <--- NOVÉ
+        print("7. Delete a Book")
+        print("8. Return a Book")
         print("0. Exit")
         print("-" * 30)
 
     def run(self):
-        # ... (zbytek zůstává stejný) ...
+        # Initial DB Check
+        db = DatabaseConnection()
+        if not db.connect():
+            print("CRITICAL ERROR: Cannot connect to database. Check config/settings.json.")
+            return
+
         while True:
             self.print_menu()
             choice = input("Select an option: ")
@@ -56,8 +62,10 @@ class LibraryApp:
                     self.import_csv_ui()
                 elif choice == '6':
                     self.show_report()
-                elif choice == '7':            # <--- NOVÉ
-                    self.delete_book_ui()      # <--- NOVÉ
+                elif choice == '7':
+                    self.delete_book_ui()
+                elif choice == '8':
+                    self.return_book_ui()
                 elif choice == '0':
                     print("Exiting application. Goodbye!")
                     break
@@ -66,46 +74,46 @@ class LibraryApp:
             except Exception as e:
                 print(f"Unexpected Application Error: {e}")
 
-    # ... (ostatní metody zůstávají) ...
-
-    # Přidej tuto metodu dolů mezi ostatní UI metody:
-    def delete_book_ui(self):
-        print("\n--- Delete Book ---")
-        try:
-            book_id = int(input("Enter Book ID to delete: "))
-            # Check confirmation
-            confirm = input(f"Are you sure you want to delete book {book_id}? (yes/no): ")
-            if confirm.lower() == 'yes':
-                if self.book_repo.delete_book(book_id):
-                    print("Book deleted successfully.")
-                else:
-                    print("Failed to delete book (maybe ID does not exist).")
-            else:
-                print("Deletion cancelled.")
-        except ValueError:
-            print("Error: ID must be a number.")
-
     # --- UI METHODS ---
 
     def show_books(self):
         print("\n--- Book List ---")
         books = self.book_repo.get_all_books()
+
+        # Get list of currently borrowed book IDs using the NEW safer method
+        borrowed_book_ids = self.loan_service.get_borrowed_book_ids()
+
         if not books:
             print("No books found.")
+
+        # Print table header
+        print(f"{'ID':<4} | {'Title':<30} | {'Price':<10} | {'Status'}")
+        print("-" * 60)
+
         for b in books:
-            status = "Active" if b['is_active'] else "Inactive"
-            print(f"[{b['book_id']}] {b['title']} (ISBN: {b['isbn']}) - {b['price']} CZK [{status}]")
+            # Determine status based on loans
+            if b['book_id'] in borrowed_book_ids:
+                status = "BORROWED"
+            else:
+                status = "AVAILABLE"
+
+            print(f"{b['book_id']:<4} | {b['title']:<30} | {b['price']:<10.2f} | {status}")
 
     def add_book_ui(self):
         print("\n--- Add New Book ---")
+
+        # Show publishers first so user knows the ID
+        print("Available Publishers:")
+        publishers = self.book_repo.get_all_publishers()
+        for p in publishers:
+            print(f" ID {p['publisher_id']}: {p['name']}")
+        print("-" * 20)
+
         try:
             title = input("Title: ")
             isbn = input("ISBN: ")
             price = float(input("Price: "))
-            # We hardcode publisher ID 1 for simplicity in this UI demo
-            # In a full app, we would list publishers first
-            publisher_id = input("Publisher ID (default 1): ")
-            if not publisher_id: publisher_id = 1
+            publisher_id = int(input("Publisher ID (choose from above): "))
 
             result = self.book_repo.add_book(title, isbn, price, publisher_id)
             if result:
@@ -113,7 +121,7 @@ class LibraryApp:
             else:
                 print("Failed to add book.")
         except ValueError:
-            print("Error: Invalid input format (e.g. price must be a number).")
+            print("Error: Invalid input (price/ID must be numbers).")
 
     def borrow_book_ui(self):
         print("\n--- Borrow Book ---")
@@ -127,24 +135,46 @@ class LibraryApp:
         except ValueError:
             print("Error: IDs must be numbers.")
 
+    def return_book_ui(self):
+        print("\n--- Return Book ---")
+        try:
+            book_id = int(input("Enter Book ID to return: "))
+            message = self.loan_service.return_book(book_id)
+            print(message)
+        except ValueError:
+            print("Error: ID must be a number.")
+
     def show_loans(self):
         print("\n--- Active Loans ---")
         loans = self.loan_service.get_active_loans()
         if not loans:
             print("No active loans.")
         for l in loans:
-            print(f"Loan [{l['loan_id']}] | {l['full_name']} borrowed '{l['title']}' on {l['loan_date']}")
+            print(f"Loan [{l['loan_id']}] | {l['full_name']} has '{l['title']}' (since {l['loan_date']})")
 
     def import_csv_ui(self):
         filename = input("Enter filename in /data folder (default: import_books.csv): ")
         if not filename: filename = "import_books.csv"
-
         print(f"Importing from {filename}...")
-        result = self.import_service.import_books_from_csv(filename)
-        print(result)
+        print(self.import_service.import_books_from_csv(filename))
 
     def show_report(self):
         print(self.report_service.generate_top_borrowers_report())
+
+    def delete_book_ui(self):
+        print("\n--- Delete Book ---")
+        try:
+            book_id = int(input("Enter Book ID to delete: "))
+            confirm = input(f"Are you sure you want to delete book {book_id}? (yes/no): ")
+            if confirm.lower() == 'yes':
+                if self.book_repo.delete_book(book_id):
+                    print("Book deleted successfully.")
+                else:
+                    print("Failed to delete book (maybe ID does not exist).")
+            else:
+                print("Deletion cancelled.")
+        except ValueError:
+            print("Error: ID must be a number.")
 
 
 if __name__ == "__main__":

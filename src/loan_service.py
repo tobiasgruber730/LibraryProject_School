@@ -14,15 +14,8 @@ class LoanService:
 
     def borrow_book(self, member_id, book_id):
         """
-        Transakční metoda pro půjčení knihy.
-        Requirement: Transaction over multiple tables (loans + members).
-
-        Steps:
-        1. Check if book is available.
-        2. Start Transaction.
-        3. Insert record into 'loans'.
-        4. Update 'members' (update activity timestamp).
-        5. Commit transaction.
+        Transaction to borrow a book.
+        Inserts into loans and updates members table.
         """
         conn = self.db.connect()
         if not conn:
@@ -31,57 +24,86 @@ class LoanService:
         cursor = conn.cursor()
 
         try:
-            # 1. CHECK AVAILABILITY (Read-only part)
-            # We check if the book is currently in the 'active' loans list
+            # 1. CHECK AVAILABILITY
             check_query = "SELECT loan_id FROM loans WHERE book_id = %s AND status = 'ACTIVE'"
             cursor.execute(check_query, (book_id,))
             if cursor.fetchone():
                 return f"Error: Book ID {book_id} is already borrowed."
 
             # START TRANSACTION
-            # By default, connector might be autocommit, so we disable it explicitly
             conn.autocommit = False
 
             print(f"--- Starting Transaction for Member {member_id} borrowing Book {book_id} ---")
 
-            # 2. INSERT into LOANS (Table 1)
+            # 2. INSERT into LOANS
             insert_loan_query = """
                 INSERT INTO loans (member_id, book_id, loan_date, status) 
                 VALUES (%s, %s, NOW(), 'ACTIVE')
             """
             cursor.execute(insert_loan_query, (member_id, book_id))
 
-            # 3. UPDATE MEMBERS (Table 2) - Requirement: Write to multiple tables
-            # We update the 'joined_at' field to mark latest activity time,
-            # or we could update any other field. This satisfies the school requirement.
+            # 3. UPDATE MEMBERS (Activity timestamp)
             update_member_query = "UPDATE members SET joined_at = NOW() WHERE member_id = %s"
             cursor.execute(update_member_query, (member_id,))
 
-            # 4. COMMIT (Save everything permanently)
+            # 4. COMMIT
             conn.commit()
             print("--- Transaction COMMITTED Successfully ---")
             return "Success: Book borrowed."
 
         except mysql.connector.Error as err:
-            # IF ERROR -> ROLLBACK (Undo everything)
             conn.rollback()
-            print(f"--- Transaction ROLLED BACK due to error: {err} ---")
+            print(f"--- Transaction ROLLED BACK: {err} ---")
             return f"Transaction Failed: {err}"
 
         finally:
-            conn.autocommit = True  # Reset to default
+            if conn.is_connected():
+                conn.autocommit = True
+                cursor.close()
+                self.db.close()
+
+    def return_book(self, book_id):
+        """
+        Marks a book as returned.
+        Updates 'loans' table: sets status to 'RETURNED' and end_date to NOW.
+        """
+        conn = self.db.connect()
+        if not conn:
+            return "DB Connection Failed"
+
+        cursor = conn.cursor()
+        try:
+            # Check if there is an active loan for this book
+            check_query = "SELECT loan_id FROM loans WHERE book_id = %s AND status = 'ACTIVE'"
+            cursor.execute(check_query, (book_id,))
+            loan = cursor.fetchone()
+
+            if not loan:
+                return f"Error: Book ID {book_id} is not currently borrowed."
+
+            # Update the loan record
+            update_query = """
+                UPDATE loans 
+                SET status = 'RETURNED', return_date = NOW() 
+                WHERE loan_id = %s
+            """
+            cursor.execute(update_query, (loan[0],))
+            conn.commit()
+            return "Success: Book returned."
+
+        except mysql.connector.Error as err:
+            return f"Error returning book: {err}"
+        finally:
             cursor.close()
             self.db.close()
 
     def get_active_loans(self):
         """
-        Simple helper to see who borrowed what.
-        Uses the View defined in SQL.
+        Returns list of active loans using the SQL View (for display purposes).
         """
         conn = self.db.connect()
         cursor = conn.cursor(dictionary=True)
         try:
-            # Using the VIEW created in SQL script
             query = "SELECT * FROM view_active_loans"
             cursor.execute(query)
             return cursor.fetchall()
@@ -92,24 +114,24 @@ class LoanService:
             cursor.close()
             self.db.close()
 
+    def get_borrowed_book_ids(self):
+        """
+        Helper method to get a simple list of Book IDs that are currently borrowed.
+        Fixes the issue where View didn't include IDs.
+        """
+        conn = self.db.connect()
+        if not conn:
+            return []
 
-# --- TEST AREA ---
-if __name__ == "__main__":
-    service = LoanService()
-
-    # Test Data: We know from SQL script that:
-    # Member ID 1 exists (Jan Novak)
-    # Book ID 1 exists (1984) and is NOT borrowed yet.
-
-    print("TEST 1: Borrowing a book (Should Success)...")
-    result = service.borrow_book(member_id=1, book_id=1)
-    print(result)
-
-    print("\nTEST 2: Borrowing the SAME book again (Should Fail)...")
-    result_fail = service.borrow_book(member_id=1, book_id=1)
-    print(result_fail)
-
-    print("\nTEST 3: List active loans...")
-    loans = service.get_active_loans()
-    for loan in loans:
-        print(f"Loan ID: {loan['loan_id']} | Member: {loan['full_name']} | Book: {loan['title']}")
+        cursor = conn.cursor()  # Regular cursor, not dictionary
+        try:
+            query = "SELECT book_id FROM loans WHERE status = 'ACTIVE'"
+            cursor.execute(query)
+            # Convert list of tuples [(1,), (5,)] to simple list [1, 5]
+            return [row[0] for row in cursor.fetchall()]
+        except mysql.connector.Error as err:
+            print(f"Error fetching borrowed IDs: {err}")
+            return []
+        finally:
+            cursor.close()
+            self.db.close()
