@@ -1,0 +1,12 @@
+{
+    "database": {
+        "host": "localhost",
+        "user": "root",
+        "password": "",
+        "database": "first"
+    },
+    "app": {
+        "name": "Library Manager v1.0",
+        "currency": "CZK"
+    }
+}
