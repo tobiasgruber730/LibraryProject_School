@@ -24,25 +24,21 @@ class LibraryApp:
         self.report_service = ReportingService()
 
     def print_menu(self):
-        print("\n" + "=" * 30)
+        print("\n" + "="*30)
         print("   LIBRARY MANAGER v1.0")
-        print("=" * 30)
+        print("="*30)
         print("1. List All Books")
         print("2. Add New Book")
         print("3. Borrow a Book (Transaction)")
         print("4. Show Active Loans")
         print("5. Import Books from CSV")
         print("6. Generate Statistics Report")
+        print("7. Delete a Book")  # <--- NOVÉ
         print("0. Exit")
         print("-" * 30)
 
     def run(self):
-        # Initial DB Check
-        db = DatabaseConnection()
-        if not db.connect():
-            print("CRITICAL ERROR: Cannot connect to database. Check config/settings.json.")
-            return
-
+        # ... (zbytek zůstává stejný) ...
         while True:
             self.print_menu()
             choice = input("Select an option: ")
@@ -60,6 +56,8 @@ class LibraryApp:
                     self.import_csv_ui()
                 elif choice == '6':
                     self.show_report()
+                elif choice == '7':            # <--- NOVÉ
+                    self.delete_book_ui()      # <--- NOVÉ
                 elif choice == '0':
                     print("Exiting application. Goodbye!")
                     break
@@ -67,6 +65,25 @@ class LibraryApp:
                     print("Invalid choice, please try again.")
             except Exception as e:
                 print(f"Unexpected Application Error: {e}")
+
+    # ... (ostatní metody zůstávají) ...
+
+    # Přidej tuto metodu dolů mezi ostatní UI metody:
+    def delete_book_ui(self):
+        print("\n--- Delete Book ---")
+        try:
+            book_id = int(input("Enter Book ID to delete: "))
+            # Check confirmation
+            confirm = input(f"Are you sure you want to delete book {book_id}? (yes/no): ")
+            if confirm.lower() == 'yes':
+                if self.book_repo.delete_book(book_id):
+                    print("Book deleted successfully.")
+                else:
+                    print("Failed to delete book (maybe ID does not exist).")
+            else:
+                print("Deletion cancelled.")
+        except ValueError:
+            print("Error: ID must be a number.")
 
     # --- UI METHODS ---
 
