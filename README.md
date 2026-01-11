@@ -1,86 +1,87 @@
-# Dokumentace projektu: Library Manager
+# Project Documentation: Library Manager
 
-**Název projektu:** Library Manager (Správa knihovny)
-**Autor:** Tobiáš Gruber
-**Kontakt:** gruber2@spsejecna.cz
-**Škola:** SPŠE Ječná
-**Datum vypracování:** Leden 2026
-**Typ:** Školní projekt (Varianta D1 - Repository Pattern)
-
----
-
-## 1. Závěrečné resumé projektu
-Cílem projektu bylo vytvořit konzolovou aplikaci v jazyce Python pro správu knižního fondu a výpůjček. Aplikace demonstruje využití relační databáze MySQL, transakčního zpracování dat a návrhového vzoru Repository. Projekt splňuje všechny zadané požadavky včetně importu dat, generování reportů a oddělení vrstev aplikace. Aplikace je plně funkční a připravena k nasazení na školní PC.
+**Project Name:** Library Manager
+**Author:** Tobiáš Gruber
+**Contact:** gruber2@spsejecna.cz
+**School:** SPŠE Ječná
+**Date:** January 2026
+**Type:** School Project (Option D1 - Repository Pattern)
 
 ---
 
-## 2. Specifikace požadavků a Use Case
-Aplikace je navržena pro knihovníka, který potřebuje efektivně spravovat fond.
-
-**Hlavní případy užití (Use Cases):**
-1.  **Správa knih:** Uživatel může zobrazit seznam knih, přidat novou knihu a smazat existující knihu.
-2.  **Výpůjčky (Transakce):** Uživatel může realizovat výpůjčku knihy členem. Tento proces probíhá v transakci (zápis do tabulky výpůjček + aktualizace aktivity člena).
-3.  **Import dat:** Uživatel může hromadně nahrát knihy a vydavatele z CSV souboru.
-4.  **Reporting:** Uživatel může generovat statistický přehled o nejaktivnějších členech a hodnotě půjčených knih.
+## 1. Project Summary
+The goal of this project was to create a console application in Python for managing a book collection and loans. The application demonstrates the use of a MySQL relational database, transactional data processing, and the Repository design pattern. The project meets all specified requirements, including data import, report generation, and application layer separation. The application is fully functional and ready for deployment on school PCs.
 
 ---
 
-## 3. Architektura aplikace
-Projekt využívá vrstvenou architekturu s oddělením logiky a datového přístupu.
+## 2. Requirements Specification and Use Cases
+The application is designed for a librarian who needs to efficiently manage the library collection.
 
-### Použité návrhové vzory
-* **Repository Pattern (D1):** Třída `BookRepository` zapouzdřuje veškerou logiku pro přístup k tabulce knih. Zbytek aplikace neobsahuje přímé SQL dotazy na knihy.
-* **Service Layer:** Třídy `LoanService`, `ImportService` a `ReportingService` obsahují byznys logiku (transakce, validace, agregace).
-* **Singleton:** Třída `DatabaseConnection` zajišťuje jediné, sdílené připojení k databázi.
-
-### Struktura projektu
-* `/src`: Zdrojové kódy aplikace (moduly, služby, repozitáře).
-* `/data`: SQL skripty pro databázi a CSV soubory pro import.
-* `/config`: Konfigurační soubory.
-* `/tests` / `/doc`: Dokumentace a testovací scénáře.
+**Main Use Cases:**
+1.  **Book Management:** The user can view the list of books, add a new book, and delete an existing book.
+2.  **Loans (Transactions):** The user can process a book loan for a member. This process runs within a database transaction (writing to the loans table + updating member activity timestamp).
+3.  **Data Import:** The user can bulk upload books and publishers from a CSV file.
+4.  **Reporting:** The user can generate a statistical overview of the most active members and the total value of borrowed books.
 
 ---
 
-## 4. Databázový model (E-R Model)
-Aplikace využívá relační databázi MySQL. Export databáze je umístěn v souboru `data/database_schema.sql` a obsahuje DDL i DML příkazy.
+## 3. Application Architecture
+The project utilizes a layered architecture to separate business logic from data access.
 
-**Tabulky a atributy:**
+### Design Patterns Used
+* **Repository Pattern (D1):** The `BookRepository` class encapsulates all logic for accessing the book table. The rest of the application contains no direct SQL queries regarding books.
+* **Service Layer:** The `LoanService`, `ImportService`, and `ReportingService` classes handle business logic (transactions, validation, aggregation).
+* **Singleton:** The `DatabaseConnection` class ensures a single, shared connection instance to the database.
+
+### Project Structure
+* `/src`: Source codes (modules, services, repositories).
+* `/data`: SQL scripts for the database and CSV files for import.
+* `/config`: Configuration files.
+* `/tests` / `/doc`: Documentation and test scenarios.
+* `/bin`: Compiled executable files (if applicable).
+
+---
+
+## 4. Database Model (E-R Model)
+The application uses a MySQL relational database. The database export is located in `data/database_schema.sql` and includes both DDL and DML commands.
+
+**Tables and Attributes:**
 * **authors:** `author_id` (PK), `first_name`, `last_name`, `birth_date` (Date).
 * **publishers:** `publisher_id` (PK), `name` (String), `website`.
 * **books:** `book_id` (PK), `title` (String), `isbn` (Unique), `price` (Float), `is_active` (Bool), `publisher_id` (FK).
 * **members:** `member_id` (PK), `full_name`, `email`, `membership_type` (Enum: BASIC/PREMIUM/STUDENT), `joined_at` (Datetime).
 * **loans:** `loan_id` (PK), `member_id` (FK), `book_id` (FK), `loan_date`, `status`.
-* **book_authors:** Vazební tabulka (M:N) pro propojení knih a autorů.
+* **book_authors:** M:N Junction table linking books and authors.
 
 ---
 
-## 5. Schéma importovaných souborů
-Aplikace podporuje import knih z formátu CSV. Import automaticky plní dvě tabulky (`publishers` a `books`).
+## 5. Imported Files Schema
+The application supports importing books from CSV format. The import automatically populates two tables (`publishers` and `books`).
 
-**Soubor:** `/data/import_books.csv`
-**Formát:** Textový soubor oddělený čárkami, kódování UTF-8.
-**Povinná hlavička a struktura:**
+**File:** `/data/import_books.csv`
+**Format:** Comma-separated text file, UTF-8 encoding.
+**Required Header and Structure:**
 `publisher_name,book_title,isbn,price`
 
-**Popis položek:**
-* `publisher_name`: Název vydavatele (String)
-* `book_title`: Název knihy (String)
-* `isbn`: Unikátní identifikátor (String)
-* `price`: Cena (Float)
+**Item Description:**
+* `publisher_name`: Name of the publisher (String)
+* `book_title`: Title of the book (String)
+* `isbn`: Unique Identifier (String)
+* `price`: Price (Float)
 
 ---
 
-## 6. Konfigurace
-Nastavení aplikace je uloženo v souboru `config/settings.json`.
+## 6. Configuration
+Application settings are stored in `config/settings.json`.
 
-**Přípustné volby:**
+**Admissible Options:**
 ```json
 {
     "database": {
-        "host": "localhost",
-        "user": "root",
-        "password": "",
-        "database": "library_db"
+        "host": "localhost",      // Database server address
+        "user": "root",           // Database username
+        "password": "",           // Database password
+        "database": "library_db"  // Database name
     },
     "app": {
         "name": "Library Manager v1.0",
